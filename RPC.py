@@ -105,10 +105,10 @@ class Calculator:
                 my_list = my_list[:-1] + [e.item(my_list[-1])]
         return my_list
 
-    def validate(self, locked_only=True):
+    def validate(self, locked_only=False):
         possible_counts = {0}
         for e in self.elements:
-            if e.lock and locked_only:
+            if e.lock or not locked_only:
                 possible_counts = set([count + e.count() for count in possible_counts]) & {1, 2}
             else:
                 if {2} == possible_counts:
@@ -186,6 +186,7 @@ if __name__ == "__main__":
     C.lock([0])
     C.randomize_unlocked()
     print C.evaluate()
+    # TODO: Fix the validate for locked_only = False
     # TODO: add Number class (with __float__ and __str__)
     # TODO: add Input class (with __float__ and __str__)
     # TODO: Recurrance & deltas & polyporph
