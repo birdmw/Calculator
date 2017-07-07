@@ -191,3 +191,5 @@ if __name__ == "__main__":
     # TODO: Recurrance & deltas & polyporph
     # TODO: gradient descent
     # TODO: Parallelize
+    # TODO: Teachers and learners
+    # TODO: Functional Decomp as seed
