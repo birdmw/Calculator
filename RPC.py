@@ -5,6 +5,7 @@
 
 import numpy as np
 import random
+from Number import Number
 
 xfr_fxns = [np.sin, np.cos, np.tan, np.exp]
 red_fxns = [np.subtract, np.add, np.divide, np.multiply, np.power]
@@ -148,7 +149,7 @@ class Calculator:
             possibles += red_fxns
         self.elements[index].item = 1.0
         if self.validate(locked_only=True):
-            # TODO: This then becomes a new random Number() or Input() chosen from input list
+            # TODO: This then becomes a new random Number() or Input() chosen from input list <-- start here
             possibles += [1.0]
 
         self.elements[index].item = prev_item
@@ -186,7 +187,6 @@ if __name__ == "__main__":
     C.lock([0])
     C.randomize_unlocked()
     print C.evaluate()
-    # TODO: Fix the validate for locked_only = False
     # TODO: add Number class (with __float__ and __str__)
     # TODO: add Input class (with __float__ and __str__)
     # TODO: Recurrance & deltas & polyporph

@@ -1,67 +1,114 @@
 # A multi-arm bandit method for creating, sampling,
 # and updating a simple number
-from random import random, gauss
-from scipy.optimize import curve_fit
-import numpy as np
+import math
+from math import sqrt
+from random import random, uniform
+
 import matplotlib.pyplot as plt
-from scipy.stats import norm
+import numpy as np
+from sklearn.metrics import mean_squared_error
 
 
-def gauss_function(x, a, x0, sigma):
-    return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
-
-
-def bandit_choice(my_list, key=None):
+def bandit_choice(my_list, amp=1., key=None):
     if not key:
         running_sum = 0.0
-        threshold = random() * float(sum(my_list))
+        threshold = random() * float(sum([item ** amp for item in my_list]))
         for i, value in enumerate(my_list):
-            running_sum += value
+            running_sum += value ** amp
             if running_sum >= threshold:
                 return my_list[i]
     else:
         running_sum = 0.0
-        threshold = random() * float(sum(item[key] for item in my_list))
+        threshold = random() * float(sum([item[key] ** amp if item[key] else 0.5 for item in my_list]))
         for i, item in enumerate(my_list):
-            running_sum += item[key]
+            running_sum += item[key] ** amp if item[key] else 0.5 ** amp
             if running_sum >= threshold:
                 return my_list[i]
 
 
+def rmse(x, arr):
+    x_arr = [x] * int(np.array(arr).size)
+    return sqrt(mean_squared_error(x_arr, arr))
+
+
 class Number:
-    def __init__(self):
+    def __init__(self, min_range, max_range, bucket_count):
+        self.max_samples = 10
+        bucket_size = (max_range - min_range) / float(bucket_count)
+        self.buckets = []
+        i_min, i_max = min_range, min_range + bucket_size
+        for _ in range(bucket_count):
+            self.buckets.append(
+                {'min': i_min, 'max': i_max, 'x_samples': [], 'y_samples': [], 'avg': None})
+            i_min += bucket_size
+            i_max += bucket_size
         self.latest_bucket = None
-        self.buckets = [
-            {'min': -1000.0, 'max': 1000.0, 'x_samples': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-             'y_samples': [1, 1, 2, 3, 4, 3, 2, 1, 1], 'x_mu': 0.0, 'x_sig': 1.0, 'y_mu': 1.0,
-             'y_sig': 1.0}]
 
-    def sample(self):
-        bucket = bandit_choice(self.buckets, key='y_mu')
+    def sample(self, add_to_bucket=True):
+        bucket = bandit_choice(self.buckets, key='avg')
         self.latest_bucket = bucket
-        x = gauss(bucket['x_mu'], bucket['x_sig'])
-        bucket['x_samples'].append(x)
-
-        print bucket
+        x = uniform(bucket['min'], bucket['max'])
+        if add_to_bucket:
+            bucket['x_samples'].append(x)
         return x
 
-    def feedback(self, y_value):
-        self.latest_bucket['y_samples'].append(y_value)
-        x = np.array(self.latest_bucket['x_samples'])
-        y = np.array(self.latest_bucket['y_samples'])
-        print x
-        print y
-        mean = sum(x * y)
-        sigma = sum(y * (x - mean) ** 2)
-        popt, pcov = curve_fit(gauss_function, x, y)
-        plt.plot(x, gauss_function(x, *popt))
-        plt.plot(x, y, 'ok')
-        plt.show()
+    def feedback(self, score):
+        lb = self.latest_bucket
+        x, y = lb['x_samples'], lb['y_samples']
+        y.append(score)
+        x, y = x[-self.max_samples:], y[-self.max_samples:]
+        self.latest_bucket['avg'] = sum(y) / float(len(y))
+
+    def redraw(self):
+        plt.clf()
+        for bucket in self.buckets:
+            x_0, x_1, y = bucket['min'], bucket['max'], bucket['avg']
+            plt.plot([x_0, x_1], [y, y], 'k-', lw=3)
+        plt.pause(0.01)
+
+    def __str__(self):
+        return str(self.sample(add_to_bucket=False))
 
 
-# N = Number()
-# print N.sample()
-# N.feedback(3.)
-# print N.buckets
+def judge(sample):
+    return ((math.sin(sample * 2) + 1.0) / 2.0) ** 30
 
 
+def judge2(sample):
+    return ((math.sin(sample / 2) + 1.0) / 2.0) ** 20
+
+
+def draw(n, fxn):
+    for bucket in n.buckets:
+        x_0, x_1, y = bucket['min'], bucket['max'], bucket['avg']
+        plt.plot([x_0, x_1], [y, y], 'k-', lw=3)
+    x, y = [], []
+    for i in range(10):
+        sample = n.sample()
+        score = fxn(sample)
+        n.feedback(score)
+        x.append(sample)
+        y.append(score)
+        plt.plot(x, y, 'ro')
+    plt.show()
+
+
+def test():
+    n = Number(min_range=-10, max_range=10, bucket_count=100)
+    for i in range(100):
+        sample = n.sample()
+        score = judge(sample)
+        n.feedback(score)
+
+    draw(n, judge)
+
+    for i in range(100):
+        sample = n.sample()
+        score = judge2(sample)
+        n.feedback(score)
+
+    draw(n, judge2)
+
+
+if __name__ == "__main__":
+    test()
