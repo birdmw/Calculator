@@ -3,12 +3,10 @@
 # Data: 5/18/2017
 # Notes: in pursuit of a non-uniform non-linear layer as well as selective recurrance
 
-import numpy as np
-import random
-from Number import Number
+from Number import *
 
-xfr_fxns = [np.sin, np.cos, np.tan, np.exp]
-red_fxns = [np.subtract, np.add, np.divide, np.multiply, np.power]
+xfr_fxns = [np.sin, np.cos, np.arctan, np.tanh, np.arcsinh]
+red_fxns = [np.subtract, np.add, np.divide, np.multiply]
 
 
 def get_count(x):
@@ -30,6 +28,8 @@ def floats(x):
     :param x: input
     :return: bool
     """
+    if isinstance(x, Number):
+        return True
     try:
         float(x)
         return True
@@ -39,9 +39,10 @@ def floats(x):
 
 def translate(x):
     if floats(x):
-        return float(x)
-        # TODO: If type == Number() then return x
         # TODO: If type == Input() class then return x
+        return float(x)
+    elif x[:2] == 'n':
+        return Number(min_range=-10, max_range=10, bucket_count=100)
     elif x == "-":
         return np.subtract
     elif x == "+":
@@ -66,7 +67,11 @@ class Element:
     def __init__(self, e):
         self.item = translate(e)
         self.lock = False
-        self.can_be = []
+        items = [Number(min_range=-10, max_range=10, bucket_count=100)] + xfr_fxns + red_fxns
+        self.buckets = []
+        for i in items:
+            self.buckets.append({'item': i, 'last_sample': None, 'x_samples': [], 'scores': [], 'avg': None})
+        self.lastest_bucket = None
 
     def count(self):
         return get_count(self.item)
@@ -79,11 +84,6 @@ class Calculator:
         self.elements = []  # array of polish calculator elements
 
     def set_function(self, string):
-        '''
-        interpret takes a string and populates elements
-        :param string:
-        :return:
-        '''
         self.elements = string.split()
         for i, e in enumerate(self.elements):
             self.elements[i] = Element(e)
@@ -93,17 +93,20 @@ class Calculator:
         take the self.elements and evaluate it as a RPC
         :return:
         """
-        print str(self)
+        print(str(self))
         my_list = []
         for e in self.elements:
             if floats(e.item):
-                my_list.append(e.item)
-                # TODO: if type == Number() class then append e.item() instead
                 # TODO: if type == Input() class then append e.item() instead
+                if isinstance(e.item, Number):
+                    my_list.append(e.item())
+                else:
+                    my_list.append(e.item)
             elif get_count(e.item) == -1:
                 my_list = [e.item(*my_list)]
             elif get_count(e.item) == 0:
                 my_list = my_list[:-1] + [e.item(my_list[-1])]
+            print my_list
         return my_list
 
     def validate(self, locked_only=False):
@@ -150,7 +153,7 @@ class Calculator:
         self.elements[index].item = 1.0
         if self.validate(locked_only=True):
             # TODO: This then becomes a new random Number() or Input() chosen from input list <-- start here
-            possibles += [1.0]
+            possibles += [Number(min_range=-10, max_range=10, bucket_count=100)]
 
         self.elements[index].item = prev_item
         self.elements[index].lock = prev_lock
@@ -163,13 +166,15 @@ class Calculator:
         indexes = [i for i in indexes if not self.elements[i].lock]
         for i in indexes:
             can_be = self.can_become(i)
-            random.shuffle(can_be)
-            self.elements[i].item = can_be[0]
+            buckets = []
+            for b in self.elements[i].buckets:
+
+
+            self.elements[i].item = random.choice(can_be)
             self.elements[i].lock = True
 
     def __str__(self):
         return str([e.item for e in self.elements])
-
 
 
 if __name__ == "__main__":
@@ -183,10 +188,10 @@ if __name__ == "__main__":
     # print C.can_become(4)
     # test 2
     C = Calculator()
-    C.set_function("1 2 sin + 2 -")
-    C.lock([0])
+    C.set_function("1 0 0")
+    # C.lock([0])
     C.randomize_unlocked()
-    print C.evaluate()
+    print(C.evaluate())
     # TODO: add Number class (with __float__ and __str__)
     # TODO: add Input class (with __float__ and __str__)
     # TODO: Recurrance & deltas & polyporph
