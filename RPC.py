@@ -71,7 +71,10 @@ class Element:
         self.buckets = []
         for i in items:
             self.buckets.append({'item': i, 'last_sample': None, 'x_samples': [], 'scores': [], 'avg': None})
+            if isinstance(i, Number):
+                self.number_bucket = self.buckets[-1]
         self.lastest_bucket = None
+
 
     def count(self):
         return get_count(self.item)
@@ -88,12 +91,13 @@ class Calculator:
         for i, e in enumerate(self.elements):
             self.elements[i] = Element(e)
 
-    def evaluate(self):
+    def evaluate(self, v=0):
         """
         take the self.elements and evaluate it as a RPC
         :return:
         """
-        print(str(self))
+        if v >0:
+            print(str(self))
         my_list = []
         for e in self.elements:
             if floats(e.item):
@@ -106,7 +110,8 @@ class Calculator:
                 my_list = [e.item(*my_list)]
             elif get_count(e.item) == 0:
                 my_list = my_list[:-1] + [e.item(my_list[-1])]
-            print my_list
+            if v>0:
+                print my_list
         return my_list
 
     def validate(self, locked_only=False):
@@ -128,7 +133,9 @@ class Calculator:
                 return False
         if 1 not in possible_counts:
             return False
-        return bool(possible_counts)
+        else:
+            return True
+        #return bool(possible_counts)
 
     def lock(self, indices):
         for i in indices:
@@ -160,17 +167,22 @@ class Calculator:
 
         return possibles
 
-    def randomize_unlocked(self):
+    def randomize_unlocked(self, v=1):
         indexes = range(len(self.elements))
         random.shuffle(indexes)
         indexes = [i for i in indexes if not self.elements[i].lock]
         for i in indexes:
+            if v>0:
+                print([j.item for j in self.elements])
             can_be = self.can_become(i)
-            buckets = []
+            possible_buckets = []
             for b in self.elements[i].buckets:
-
-
-            self.elements[i].item = random.choice(can_be)
+                if b['item'] in can_be:
+                    possible_buckets.append(b)
+                elif isinstance(b['item'], Number):
+                    possible_buckets.append(self.elements[i].number_bucket)
+            self.elements[i].latest_bucket = bandit_choice(possible_buckets, key='avg')
+            self.elements[i].item = self.elements[i].latest_bucket['item']
             self.elements[i].lock = True
 
     def __str__(self):
@@ -188,10 +200,10 @@ if __name__ == "__main__":
     # print C.can_become(4)
     # test 2
     C = Calculator()
-    C.set_function("1 0 0")
+    C.set_function("1 0 0 0 0 0")
     # C.lock([0])
     C.randomize_unlocked()
-    print(C.evaluate())
+    print(C.evaluate(v=1))
     # TODO: add Number class (with __float__ and __str__)
     # TODO: add Input class (with __float__ and __str__)
     # TODO: Recurrance & deltas & polyporph

@@ -69,7 +69,10 @@ class Number:
         plt.pause(0.01)
 
     def __str__(self):
-        return str(self())
+        try:
+            return
+        except:
+            return str(self())
 
 
 def judge(sample):
